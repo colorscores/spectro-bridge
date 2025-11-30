@@ -1,0 +1,2 @@
+# Certificates directory
+# Run: node scripts/generate-cert.js to generate localhost.key and localhost.crt

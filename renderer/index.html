@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spectro Bridge</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔬 Spectro Bridge</h1>
+      <p class="subtitle">Device Communication Server</p>
+    </header>
+
+    <div class="status-card">
+      <h2>Device Status</h2>
+      <div id="device-status" class="status-content">
+        <div class="status-indicator disconnected">
+          <span class="indicator"></span>
+          <span>No device connected</span>
+        </div>
+        <div id="device-info" class="device-info" style="display: none;">
+          <p><strong>Make:</strong> <span id="device-make">-</span></p>
+          <p><strong>Model:</strong> <span id="device-model">-</span></p>
+          <p><strong>Serial:</strong> <span id="device-serial">-</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-card">
+      <h2>Calibration Status</h2>
+      <div id="calibration-status" class="status-content">
+        <p class="not-calibrated">Device not calibrated</p>
+        <div id="calibration-info" style="display: none;">
+          <p><strong>Calibrated:</strong> <span id="calibration-time">-</span></p>
+          <p><strong>Expires:</strong> <span id="calibration-expires">-</span></p>
+        </div>
+        <button id="calibrate-btn" class="btn btn-primary" disabled>Calibrate Device</button>
+      </div>
+    </div>
+
+    <div class="status-card">
+      <h2>Quick Actions</h2>
+      <div class="actions">
+        <button id="test-measurement-btn" class="btn btn-secondary" disabled>Test Measurement</button>
+        <button id="refresh-btn" class="btn btn-secondary">Refresh Status</button>
+      </div>
+    </div>
+
+    <div class="status-card">
+      <h2>Activity Log</h2>
+      <div id="activity-log" class="activity-log">
+        <p class="log-entry">Spectro Bridge started</p>
+      </div>
+    </div>
+
+    <footer>
+      <p>WebSocket Server: <strong>ws://localhost:9876</strong></p>
+      <p class="version">Version 1.0.0</p>
+    </footer>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
