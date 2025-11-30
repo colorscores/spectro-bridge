@@ -192,7 +192,6 @@ while {1} {
 }
 `;
   }
-  }
 
   /**
    * Start persistent spotread session and calibrate
