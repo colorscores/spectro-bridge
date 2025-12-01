@@ -77,59 +77,41 @@ class DeviceDetector extends EventEmitter {
     const spotreadPath = path.join(argyllPath, 'spotread');
     
     return new Promise((resolve) => {
-      // Run spotread briefly - it lists devices at startup
-      // Send 'q' immediately to quit after device enumeration
-      exec(`echo "q" | "${spotreadPath}" -c 1 2>&1`, { timeout: 15000 }, (error, stdout, stderr) => {
-        const output = stdout + stderr;
+      // Use timeout to run spotread briefly - it shows device info before prompting
+      // timeout kills the process after 3 seconds, avoiding TTY issues
+      const cmd = `timeout 3 "${spotreadPath}" -c 1 2>&1 || true`;
+      
+      logger.info(`Running detection command: ${cmd}`);
+      
+      exec(cmd, { timeout: 10000 }, (error, stdout, stderr) => {
+        const output = stdout + (stderr || '');
         
         logger.info('=== spotread detection output ===');
-        logger.info(output.substring(0, 1500));
+        logger.info(output.substring(0, 2000));
         
-        let foundDevices = 0;
+        // Parse serial number from calibration prompt: "S/N 1000294"
+        const serialMatch = output.match(/S\/N\s+(\d+)/i);
+        const serialNumber = serialMatch ? serialMatch[1] : null;
         
-        // Pattern 1: "Setting device to 'X-Rite i1 Pro 2'"
-        const settingMatch = output.match(/Setting.*?(?:device|instrument)\s+to\s+'([^']+)'/i);
-        if (settingMatch) {
-          const deviceName = settingMatch[1];
-          logger.info(`Found device (pattern 1): ${deviceName}`);
-          if (this.emitI1ProDevice(deviceName)) {
-            foundDevices++;
-          }
+        if (serialNumber) {
+          logger.info(`Detected serial number: ${serialNumber}`);
         }
         
-        // Pattern 2: "N = 'usbXX: (Device Name)'"
-        if (foundDevices === 0) {
-          const portPattern = /(\d+)\s*=\s*'[^']*\(([^)]+)\)'/g;
-          let match;
-          while ((match = portPattern.exec(output)) !== null) {
-            const portNumber = parseInt(match[1]);
-            const deviceName = match[2];
-            logger.info(`Found device (pattern 2): ${deviceName} (port ${portNumber})`);
-            if (this.emitI1ProDevice(deviceName, portNumber)) {
-              foundDevices++;
-            }
-          }
-        }
-        
-        // Pattern 3: Any mention of i1 Pro in output
-        if (foundDevices === 0) {
-          const i1Match = output.match(/i1\s*Pro\s*(\d)?/i);
-          if (i1Match) {
-            const gen = i1Match[1] || '2';
-            logger.info(`Found i1 Pro mention (pattern 3): gen ${gen}`);
-            this.emit('device:attached', {
-              vendorId: 0x0971,
-              productId: gen === '3' ? 0x2007 : (gen === '2' ? 0x2001 : 0x2000),
-              deviceAddress: 1
-            });
-            foundDevices++;
-          }
-        }
-        
-        if (foundDevices === 0) {
-          logger.info('No supported devices found via spotread');
+        // Check if this is an i1Pro device
+        if (output.includes('reflective white reference') || 
+            output.includes('i1 Pro') || 
+            output.includes('i1Pro')) {
+          
+          logger.info(`Detected i1Pro device, serial: ${serialNumber || 'unknown'}`);
+          
+          this.emit('device:attached', {
+            vendorId: 0x0971,
+            productId: 0x2001, // i1Pro2
+            deviceAddress: 1,
+            serialNumber: serialNumber
+          });
         } else {
-          logger.info(`Found ${foundDevices} supported device(s)`);
+          logger.info('No supported devices found via spotread');
         }
         
         resolve();

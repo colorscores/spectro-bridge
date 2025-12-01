@@ -175,25 +175,57 @@ class CertificateInstaller {
   }
 
   /**
+   * Check if certificate already exists in System keychain and is trusted
+   */
+  async checkIfAlreadyTrusted() {
+    return new Promise((resolve) => {
+      exec('security find-certificate -c localhost /Library/Keychains/System.keychain 2>&1', (error, stdout) => {
+        if (!error && stdout.includes('localhost')) {
+          logger.info('Certificate found in System keychain, checking trust...');
+          // Check trust settings
+          exec('security dump-trust-settings -d 2>&1', (err2, trustOutput) => {
+            const trusted = trustOutput && trustOutput.includes('localhost');
+            logger.info(`Certificate trust status: ${trusted ? 'trusted' : 'not trusted'}`);
+            resolve(trusted);
+          });
+        } else {
+          logger.info('Certificate not found in System keychain');
+          resolve(false);
+        }
+      });
+    });
+  }
+
+  /**
    * Check and install certificate if needed
    * Call this during app initialization
-   * Always ensures fresh certificate installation for reliability
+   * Only installs if not already trusted
    */
   async ensureCertificateTrusted() {
+    logger.info('=== Certificate check starting ===');
+    
     if (this.platform !== 'darwin') {
-      logger.info('Skipping certificate check on non-macOS platform');
+      logger.info('Not macOS, skipping certificate');
       return true;
     }
 
-    logger.info('Ensuring SSL certificate is properly installed...');
-    
     const certPath = this.getCertPath();
     if (!this.certExists()) {
       logger.error('Certificate file not found');
       return false;
     }
     
-    // Always try to install/update the certificate for reliability
+    // Check if already trusted in keychain
+    logger.info('Checking if certificate is already trusted...');
+    const alreadyTrusted = await this.checkIfAlreadyTrusted();
+    
+    if (alreadyTrusted) {
+      logger.info('Certificate already trusted, skipping install');
+      return true;
+    }
+    
+    // Need to install
+    logger.info('Certificate not trusted, proceeding with installation...');
     const installed = await this.installCertificate();
     
     if (installed) {

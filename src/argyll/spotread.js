@@ -84,15 +84,23 @@ class SpotreadWrapper extends EventEmitter {
    * Uses blocking stdin in a while loop with expect_background for reliable detection
    */
   generatePersistentExpectScript() {
-    return `#!/usr/bin/expect -f
+    // Add -d flag for expect debugging in development
+    const debugFlag = process.env.NODE_ENV === 'development' ? '-d' : '';
+    
+    return `#!/usr/bin/expect ${debugFlag}
 set timeout 60
 log_user 1
+
+puts "EXPECT_SCRIPT_STARTED"
+puts "SPOTREAD_PATH: ${this.spotreadPath}"
 
 # Track measurement source
 set software_triggered 0
 
 # Start spotread
 spawn ${this.spotreadPath} -c 1 -s
+
+puts "SPAWN_COMPLETED"
 
 # === CALIBRATION PHASE ===
 expect {

@@ -3,6 +3,7 @@ const path = require('path');
 const { SpectroWebSocketServer } = require('./src/server/websocket');
 const { DeviceManager } = require('./src/device/DeviceManager');
 const { CalibrationManager } = require('./src/calibration/CalibrationManager');
+const { CertificateInstaller } = require('./src/utils/certificateInstaller');
 const { logger } = require('./src/utils/logger');
 
 let mainWindow = null;
@@ -109,10 +110,18 @@ function createTray() {
   });
 }
 
+const APP_VERSION = '1.0.15';
+
 async function initializeServices() {
   try {
-    console.log('=== SPECTRO BRIDGE STARTING ===');
+    console.log(`=== SPECTRO BRIDGE v${APP_VERSION} STARTING ===`);
+    logger.info(`=== Spectro Bridge v${APP_VERSION} starting ===`);
     logger.info('=== Initializing Spectro Bridge services ===');
+
+    // Check and install SSL certificate if needed (macOS only)
+    console.log('Checking SSL certificate...');
+    const certInstaller = new CertificateInstaller();
+    await certInstaller.ensureCertificateTrusted();
 
     // Initialize managers
     console.log('Creating CalibrationManager...');
@@ -133,6 +142,19 @@ async function initializeServices() {
     await deviceManager.startDetection();
     console.log('Device detection started');
     logger.info('=== DEVICE DETECTION STARTED ===');
+
+    // Broadcast initial device status after a short delay
+    // This ensures any already-connected device is reported to clients
+    setTimeout(() => {
+      const device = deviceManager.getActiveDevice();
+      if (device) {
+        logger.info('Broadcasting initial device status');
+        wsServer.broadcast({
+          type: 'device:connected',
+          device: device.getInfo()
+        });
+      }
+    }, 3000);
 
     // Listen for device events and broadcast to clients
     deviceManager.on('device:connected', (device) => {
