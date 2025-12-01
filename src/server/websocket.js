@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const { app } = require('electron');
 const { logger } = require('../utils/logger');
 const { MessageHandler } = require('./handlers');
 
@@ -23,7 +24,15 @@ class SpectroWebSocketServer {
     return new Promise((resolve, reject) => {
       try {
         // Try to load SSL certificates for WSS support
-        const certPath = path.join(__dirname, '../../certs');
+        // In packaged app, certs are in Resources/certs via extraResources
+        // In development, certs are relative to source location
+        const certPath = app.isPackaged 
+          ? path.join(process.resourcesPath, 'certs')
+          : path.join(__dirname, '../../certs');
+        
+        logger.info(`App is packaged: ${app.isPackaged}`);
+        logger.info(`Looking for certificates in: ${certPath}`);
+        
         const keyFile = path.join(certPath, 'localhost.key');
         const certFile = path.join(certPath, 'localhost.crt');
 
